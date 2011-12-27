@@ -35,7 +35,7 @@ class RedisHolder {
         return [:]
     }.memoize()
 
-    static Jedis getRedis() {
+    static synchronized Jedis getRedis() {
         if (this.redis) {
             this.redis.client.ping()
         }
