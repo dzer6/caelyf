@@ -269,7 +269,7 @@ It is possible to clear the cache for a given URI if you want to provide a fresh
 </p>
 
 <pre class="brush:groovy">
-    redis.delete('/breaking-news')
+    redis.del('/breaking-news')
 </pre>
 
 <blockquote>

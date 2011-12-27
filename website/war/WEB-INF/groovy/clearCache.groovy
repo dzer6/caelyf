@@ -10,7 +10,7 @@ html.ul {
             "/download",
             "/community"
     ].each {
-        redis.delete it
+        redis.del it
         li "Cleared cache for URI: $it"
     }
 }
