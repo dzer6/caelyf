@@ -269,13 +269,20 @@ It is possible to clear the cache for a given URI if you want to provide a fresh
 </p>
 
 <pre class="brush:groovy">
-    memcache.clearCacheForUri('/breaking-news')
+    redis.delete('/breaking-news')
 </pre>
 
 <blockquote>
 <b>Note: </b> There are as many cache entries as URIs with query strings.
 So if you have <code>/breaking-news</code> and <code>/breaking-news?category=politics</code>,
 you will have to clear the cache for both, as <b>Caelyf</b> doesn't track all the query parameters.
+</blockquote>
+
+<blockquote>
+<b>Note: </b> The life of the cached groovlets and templates can outlive the life of your application.
+For example, when you redeploy a new version of your application, an old version of a given page might be served
+whereas the new application changed that page to new content.
+But ultimately, once the specified cache duration is over, the new page will be cached and served.
 </blockquote>
 
 <% if (!params.nowrap) include '/WEB-INF/includes/footer.gtpl' %>
