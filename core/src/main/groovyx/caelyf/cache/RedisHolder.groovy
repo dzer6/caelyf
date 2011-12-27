@@ -16,6 +16,11 @@ class RedisHolder {
         if (vcapEnvVariable) {
             try {
                 def json = new JsonSlurper().parseText(vcapEnvVariable)
+
+                if (json.'redis-2.2' == null)
+                    throw new RuntimeException(
+                            "No Redis service bound to your Cloud Foundry application, please register and bind Redis")
+
                 def redisServiceCred = json.'redis-2.2'[0].credentials
 
                 return [
