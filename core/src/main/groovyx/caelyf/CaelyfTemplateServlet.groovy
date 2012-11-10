@@ -67,4 +67,4 @@ class CaelyfTemplateServlet extends TemplateServlet {
             PluginsHandler.instance.executeAfterActions(request, response)
         }
     }
-}
+    }

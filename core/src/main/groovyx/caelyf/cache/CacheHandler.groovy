@@ -20,7 +20,8 @@ import javax.servlet.http.HttpServletRequest
 import java.text.SimpleDateFormat
 import groovyx.caelyf.routes.Route
 import groovyx.caelyf.logging.GroovyLogger
-import static groovyx.caelyf.cache.RedisHolder.getRedis
+import com.google.code.simplelrucache.LruCache
+import com.google.code.simplelrucache.ConcurrentLruCache
 
 /**
  * Class handling the caching of the pages
@@ -29,100 +30,107 @@ import static groovyx.caelyf.cache.RedisHolder.getRedis
  */
 class CacheHandler {
 
-    // Date formatter for caching headers date creation
-    private static final SimpleDateFormat httpDateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US)
+  // Date formatter for caching headers date creation
+  private static final SimpleDateFormat httpDateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US)
 
-    static {
-        httpDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
-    }
+  static {
+    httpDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"))
+  }
 
-    private static final GroovyLogger log = new GroovyLogger("caelyf.cache")
+  private static final GroovyLogger log = new GroovyLogger("caelyf.cache")
+    
+  private static final int capacity = 500
+  private static final long ttl = 5*60*1000 //5 minutes
+ 
+  private static final LruCache<String, Object> cache = new ConcurrentLruCache<String, Object>(capacity, ttl)
 
-    static void clearCacheForUri(String uri) {
-        redis.del(uri)
-    }
+  static Set clearCacheForUri(String uri) {
+    cache.clear()
+  }
 
-    static void serve(Route route, HttpServletRequest request, HttpServletResponse response) {
-        log.config "Serving for route $route"
+  static void serve(Route route, HttpServletRequest request, HttpServletResponse response) {
+    log.config "Serving for route $route"
 
-        def requestURI = request.requestURI
-        def uri = requestURI + (request.queryString ? "?$request.queryString" : "")
+    def requestURI = request.requestURI
+    def uri = requestURI + (request.queryString ? "?$request.queryString" : "")
 
-        log.config "Request URI to cache: $uri"
+    log.config "Request URI to cache: $uri"
 
-        def result = route.forUri(request)
+    def result = route.forUri(request)
 
-        if (route.cacheExpiration > 0) {
-            log.config "Route cacheable"
+    if (route.cacheExpiration > 0) {
+      log.config "Route cacheable"
 
-            def ifModifiedSince = request.getHeader("If-Modified-Since")
-            // if an "If-Modified-Since" header is present in the incoming request
-            if (ifModifiedSince) {
-                log.config "If-Modified-Since header present"
+      def ifModifiedSince = request.getHeader("If-Modified-Since")
+      // if an "If-Modified-Since" header is present in the incoming requestion
+      if (ifModifiedSince) {
+        log.config "If-Modified-Since header present"
 
-                def sinceDate = httpDateFormat.parse(ifModifiedSince)
-                String lastModifiedString = redis.hget(uri, 'last-modified')
-                if (lastModifiedString && httpDateFormat?.parse(lastModifiedString).before(sinceDate)) {
-                    log.config "Sending NOT_MODIFIED"
+        def sinceDate = httpDateFormat.parse(ifModifiedSince)
+        String lastModifiedKey = "last-modified-$uri"
+        String lastModifiedString = cache.get(lastModifiedKey)
+        if (lastModifiedString && httpDateFormat?.parse(lastModifiedString).before(sinceDate)) {
+          log.config "Sending NOT_MODIFIED"
 
-                    response.sendError HttpServletResponse.SC_NOT_MODIFIED
-                    response.setHeader("Last-Modified", ifModifiedSince)
-                    return
-                }
-            }
-            serveAndCacheOrServeFromCache(request, response, result.destination, uri, route.cacheExpiration)
-        } else {
-            log.config "Route not cacheable"
-
-            request.getRequestDispatcher(result.destination).forward request, response
+          response.sendError HttpServletResponse.SC_NOT_MODIFIED
+          response.setHeader("Last-Modified", ifModifiedSince)
+          return
         }
+      }
+      serveAndCacheOrServeFromCache(request, response, result.destination, uri, route.cacheExpiration)
+    } else {
+      log.config "Route not cacheable"
+
+      request.getRequestDispatcher(result.destination).forward request, response
     }
+  }
 
-    static private serveAndCacheOrServeFromCache(HttpServletRequest request, HttpServletResponse response, String destination, String uri, int cacheExpiration) {
-        log.config "Serve and/or cache for URI $uri"
+  static private serveAndCacheOrServeFromCache(HttpServletRequest request, HttpServletResponse response, String destination, String uri, int cacheExpiration) {
+    log.config "Serve and/or cache for URI $uri"
 
-        def uriBytes = uri.getBytes('UTF-8')
-        def contentKeyBytes = 'content'.getBytes('UTF-8')
+    String contentKey = "content-for-$uri"
+    String typeKey = "content-type-for-$uri"
+    String lastModifiedKey = "last-modified-$uri"
 
-        def type = redis.hget(uri, 'content-type')
-        def content = redis.hget(uriBytes, contentKeyBytes)
+    def content = cache.get(contentKey)
+    def type = cache.get(typeKey)
 
-        // the resource is still present in the cache
-        if (content && type) {
-            log.config "Content present in the cache, outputing content-type and content"
+    // the resource is still present in the cache
+    if (content && type) {
+      log.config "Content present in the cache, outputing content-type and content"
 
-            // if it's in the cache, return the page from the cache
-            response.contentType = type
-            response.outputStream << content
-        } else { // serve and cache
-            log.config "Not in the cache"
+      // if it's in the cache, return the page from the cache
+      response.contentType = type
+      response.outputStream << content
+    } else { // serve and cache
+      log.config "Not in the cache"
 
-            def now = new Date()
-            def lastModifiedString = httpDateFormat.format(now)
+      def now = new Date()
+      def lastModifiedString = httpDateFormat.format(now)
 
-            // specify caching durations
-            response.addHeader "Cache-Control", "max-age=${cacheExpiration}"
-            response.addHeader "Last-Modified", lastModifiedString
-            response.addHeader "Expires", httpDateFormat.format(new Date(now.time + cacheExpiration * 1000))
-            //response.addHeader "ETag", "\"\""
+      // specify caching durations
+      response.addHeader "Cache-Control", "max-age=${cacheExpiration}"
+      response.addHeader "Last-Modified", lastModifiedString
+      response.addHeader "Expires", httpDateFormat.format(new Date(now.time + cacheExpiration * 1000))
+      //response.addHeader "ETag", "\"\""
 
-            log.config "Wrapping a response for caching and forwarding to resource to be cached"
-            def cachedResponse = new CachedResponse(response)
-            request.getRequestDispatcher(destination).forward request, cachedResponse
-            def byteArray = cachedResponse.output.toByteArray()
+      log.config "Wrapping a response for caching and forwarding to resource to be cached"
+      def cachedResponse = new CachedResponse(response)
+      request.getRequestDispatcher(destination).forward request, cachedResponse
+      def byteArray = cachedResponse.output.toByteArray()
 
-            log.config "Byte array of wrapped response will be put in cache: ${new String(byteArray)}"
+      log.config "Byte array of wrapped response will be put in memcache: ${new String(byteArray)}"
 
-            redis.hset(uri, 'content-type', cachedResponse.contentType)
-            redis.hset(uri, 'last-modified', lastModifiedString)
-            redis.hset(uriBytes, contentKeyBytes, byteArray)
-            redis.expire(uri, cacheExpiration)
+      // put the output in cache
+      cache.put(contentKey, byteArray, cacheExpiration * 1000)
+      cache.put(typeKey, cachedResponse.contentType, cacheExpiration * 1000)
+      cache.put(lastModifiedKey, lastModifiedString, cacheExpiration * 1000)
 
-            log.config "Serving content-type and byte array"
+      log.config "Serving content-type and byte array"
 
-            // output back to the screen
-            response.contentType = cachedResponse.contentType
-            response.outputStream << byteArray
-        }
+      // output back to the screen
+      response.contentType = cachedResponse.contentType
+      response.outputStream << byteArray
     }
+  }
 }

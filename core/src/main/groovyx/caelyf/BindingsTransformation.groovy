@@ -32,8 +32,6 @@ import org.codehaus.groovy.ast.stmt.ReturnStatement
 import org.codehaus.groovy.ast.expr.MethodCallExpression
 import org.codehaus.groovy.ast.expr.ClassExpression
 import org.codehaus.groovy.ast.expr.TupleExpression
-import redis.clients.jedis.Jedis
-import groovyx.caelyf.cache.RedisHolder
 
 /**
  * This Groovy AST Transformation is a local transformation which is triggered by the Groovy compiler
@@ -53,10 +51,9 @@ class BindingsTransformation implements ASTTransformation {
 
 		ClassNode parent = (ClassNode) nodes[1]
 
-		addGetterIfNotExists(parent, Boolean,                  "getLocalMode",         BindingEnhancer,      "getLocalMode")
+		//addGetterIfNotExists(parent, Boolean,                  "getLocalMode",         BindingEnhancer,      "getLocalMode")
 		addGetterIfNotExists(parent, Map,                      "getApp",               BindingEnhancer,      "getApp")
 		addGetterIfNotExists(parent, LoggerAccessor,           "getLogger",            BindingEnhancer,      "getLogger")
-		addGetterIfNotExists(parent, Jedis,                    "getRedis",             RedisHolder,          "getRedis")
 	}
 
 	private void addGetterIfNotExists(ClassNode parent, Class serviceClass, String getterName, Class factoryClass, String factoryMethodName) {

@@ -96,6 +96,7 @@ class GroovyLogger {
 
     void severe (String msg) { log(Level.SEVERE,  msg) }
     void warning(String msg) { log(Level.WARNING, msg) }
+    void warn   (String msg) { log(Level.WARNING, msg) }
     void info   (String msg) { log(Level.INFO,    msg) }
     void config (String msg) { log(Level.CONFIG,  msg) }
     void fine   (String msg) { log(Level.FINE,    msg) }

@@ -40,9 +40,11 @@ class PluginsHandler {
     List categories = []
     List beforeActions = []
     List afterActions = []
+    
+    String contextPath
 
     final defaultScriptContentLoader = { String path ->
-        def file = new File(path)
+        def file = new File(contextPath, path)
         file.exists() ? file.text : ""
     }
 

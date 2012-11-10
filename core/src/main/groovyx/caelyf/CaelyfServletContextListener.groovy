@@ -32,6 +32,7 @@ class CaelyfServletContextListener implements ServletContextListener {
      * @param servletContextEvent
      */
     void contextInitialized(ServletContextEvent servletContextEvent) {
+        PluginsHandler.instance.contextPath = servletContextEvent.servletContext.getRealPath(File.separator)
         PluginsHandler.instance.initPlugins()
     }
 
