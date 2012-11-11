@@ -33,7 +33,7 @@
     <dependency>
       <groupId>org.codehaus.groovy</groupId>
       <artifactId>groovy-all</artifactId>
-      <version>1.8.6</version>
+      <version>2.0.1</version>
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
@@ -57,11 +57,11 @@
             </goals>
             <configuration>
               <sources>
-                <source>src/main/groovy</source>
+                <source>src/main</source>
               </sources>
             </configuration>
           </execution>
-          <execution>
+          <!--execution>
             <id>add-test-source</id>
             <phase>generate-test-sources</phase>
             <goals>
@@ -69,16 +69,16 @@
             </goals>
             <configuration>
               <sources>
-                <source>src/test/groovy</source>
+                <source>src/test</source>
               </sources>
             </configuration>
-          </execution>
+          </execution-->
         </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.3.2</version>
+        <version>2.4</version>
         <configuration>
           <source>${java-version}</source>
           <target>${java-version}</target>
@@ -89,7 +89,7 @@
           <dependency>
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy-eclipse-compiler</artifactId>
-            <version>2.6.0-01</version>
+            <version>2.7.0-01</version>
           </dependency>
         </dependencies>
       </plugin>
