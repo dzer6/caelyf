@@ -23,6 +23,17 @@
       <url>https://oss.sonatype.org/content/groups/staging/</url>
     </repository>
   </repositories>
+  
+  <distributionManagement>
+      <repository>
+          <id>repo</id>
+          <url>https://bitbucket.org/dzer6/mvn-repo/raw/master/releases</url>
+      </repository>
+      <snapshotRepository>
+          <id>snapshot-repo</id>
+          <url>https://bitbucket.org/dzer6/mvn-repo/raw/master/snapshots</url>
+      </snapshotRepository>
+  </distributionManagement>
 
   <dependencies>
     <dependency>
