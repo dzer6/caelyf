@@ -33,7 +33,7 @@ class PluginsHandler {
     // indicates whether the plugins have already been loaded or not
     // as both the template and groovlet servlets can call the handler
     // we can't know which one will initialize the plugins first
-    private boolean initialized = false
+    private volatile boolean initialized = false
 
     Map bindingVariables = [:]
     List routes = []
