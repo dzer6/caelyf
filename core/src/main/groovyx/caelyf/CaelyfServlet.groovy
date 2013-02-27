@@ -17,6 +17,11 @@ package groovyx.caelyf
 
 import groovy.servlet.GroovyServlet
 import groovy.servlet.ServletBinding
+import groovy.servlet.ServletCategory
+
+import groovy.util.GroovyScriptEngine;
+
+import org.codehaus.groovy.runtime.GroovyCategorySupport;
 
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
@@ -34,10 +39,18 @@ import groovyx.caelyf.logging.GroovyLogger
  * @see groovy.servlet.GroovyServlet
  */
 class CaelyfServlet extends GroovyServlet {
-
+    
+    /**
+     * The script engine executing the Groovy scripts for this servlet
+     */
+    private GroovyScriptEngine gse
+    
     @Override
     void init(ServletConfig config) {
         super.init(config)
+        
+        // Set up the scripting engine
+        gse = createGroovyScriptEngine()
     }
 
     /**
@@ -65,7 +78,32 @@ class CaelyfServlet extends GroovyServlet {
     void service(HttpServletRequest request, HttpServletResponse response) throws IOException {
         use([CaelyfCategory, * PluginsHandler.instance.categories]) {
             PluginsHandler.instance.executeBeforeActions(request, response)
-            super.service(request, response)
+            try {
+                // Get the script path from the request - include aware (GROOVY-815)
+                final String scriptUri = getScriptUri(request)
+                
+                // Set it to HTML by default
+                response.setContentType("text/html; charset="+encoding)
+                
+                // Set up the script context
+                final ServletBinding binding = new ServletBinding(request, response, servletContext)
+                setVariables(binding)
+                
+                Closure closure = new Closure(gse) {
+                    public Object call() {
+                        try {
+                            return ((GroovyScriptEngine) getDelegate()).run(scriptUri, binding)
+                        } catch (ResourceException e) {
+                            throw new RuntimeException(e)
+                        } catch (ScriptException e) {
+                            throw new RuntimeException(e)
+                        }
+                    }
+                }
+                GroovyCategorySupport.use(ServletCategory.class, closure)
+            } catch (e) {
+                PluginsHandler.instance.executeHandleExceptionActions(e, request, response)
+            }
             PluginsHandler.instance.executeAfterActions(request, response)
         }
     }

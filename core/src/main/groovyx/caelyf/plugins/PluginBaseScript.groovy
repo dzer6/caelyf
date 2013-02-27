@@ -35,6 +35,9 @@ abstract class PluginBaseScript extends RoutesBaseScript {
 
     /** "after" request hook */
     Closure afterAction = null
+    
+    /** exception handler hook */
+    Closure handleExceptionAction = null
 
     /**
      * Inject new variables in the binding
@@ -86,5 +89,14 @@ abstract class PluginBaseScript extends RoutesBaseScript {
      */
     void after(Closure c) {
         afterAction = c
+    }
+    
+    /**
+     * Add handler for any exceptions than can throws inside groovlet
+     * 
+     * @param c the closure handler to handle exception
+     */
+    void handleException(Closure c) {
+        handleExceptionAction = c
     }
 }

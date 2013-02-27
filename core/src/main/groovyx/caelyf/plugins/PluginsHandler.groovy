@@ -40,6 +40,7 @@ class PluginsHandler {
     List categories = []
     List beforeActions = []
     List afterActions = []
+    List handleExceptionActions = []
     
     String contextPath
 
@@ -59,6 +60,7 @@ class PluginsHandler {
         categories = []
         beforeActions = []
         afterActions = []
+        handleExceptionActions = []
         scriptContent = defaultScriptContentLoader
     }
 
@@ -101,7 +103,8 @@ class PluginsHandler {
                     categories.addAll script.getCategories()
 
                     if (script.getBeforeAction()) beforeActions.add script.getBeforeAction()
-                    if (script.getAfterAction())  afterActions .add script.getAfterAction()
+                    if (script.getAfterAction()) afterActions .add script.getAfterAction()
+                    if (script.getHandleExceptionAction()) handleExceptionActions .add script.getHandleExceptionAction()
                 }
             }
 
@@ -168,6 +171,28 @@ class PluginsHandler {
     void executeAfterActions(HttpServletRequest request, HttpServletResponse response) {
         afterActions.each { Closure action ->
             cloneDelegateAndExecute action, request, response
+        }
+    }
+    
+    void executeHandleExceptionActions(Exception e, HttpServletRequest request, HttpServletResponse response) {
+        handleExceptionActions.each { Closure action ->
+            Binding binding = new Binding()
+            BindingEnhancer.bind(binding)
+            
+            Closure cloned = action.clone()
+            cloned.resolveStrategy = Closure.DELEGATE_FIRST
+            cloned.delegate = [
+                *:bindingVariables,
+                e: e,
+                request: request,
+                response: response,
+                log: action.owner.log,
+                binding: bindingVariables
+            ]
+            
+            use (ServletCategory) {
+                cloned()
+            }
         }
     }
 
