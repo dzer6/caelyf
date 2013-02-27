@@ -4,3 +4,4 @@ core/.idea
 core/.gradle
 core/build
 
+/core/target/
